@@ -15,6 +15,8 @@
 #include "esphome/core/component.h"
 #include "esphome/core/gpio.h"
 #include "esphome/core/helpers.h"
+#include "esphome/core/macros.h"
+#include "esphome/core/version.h"
 
 namespace esphome {
 namespace i2s_audio {
@@ -102,6 +104,30 @@ class I2SAudioSpeaker : public I2SAudioOut, public speaker::Speaker, public Comp
   /// the speaker_task itself.
   /// @param buffer_size The allocated size of the data_buffer_.
   void delete_task_(size_t buffer_size);
+
+#ifdef USE_AUDIO_DAC
+  // ESPHome 2026.11 replaced speaker::Speaker::audio_dac_ (single pointer) with audio_dacs_ (list).
+  // These helpers hide the difference so the component builds against both APIs.
+  bool has_any_audio_dac_() const {
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 11, 0)
+    return !this->audio_dacs_.empty();
+#else
+    return this->audio_dac_ != nullptr;
+#endif
+  }
+
+  template<typename F> void for_each_audio_dac_(F &&f) {
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 11, 0)
+    for (auto *audio_dac : this->audio_dacs_) {
+      f(audio_dac);
+    }
+#else
+    if (this->audio_dac_ != nullptr) {
+      f(this->audio_dac_);
+    }
+#endif
+  }
+#endif
 
   /// @brief Callback function used to send playback timestamps the to the speaker task.
   /// @param handle (i2s_chan_handle_t)
