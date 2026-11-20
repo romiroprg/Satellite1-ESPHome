@@ -515,7 +515,9 @@ bool TAS2780::write_volume_() {
   float attenuation = (1. - volume) * 100.f;
   ESP_LOGD(TAG, "Setting attenuation to: %4.2f", attenuation);
   uint8_t dvc = clamp<uint8_t>(attenuation, 0, 0xC8);
-  this->reg(TAS2780_DVC) = dvc;
+  // Mute is implemented via DVC (0xC9), so a volume change must not overwrite it while muted.
+  // The new volume is stored in volume_ and applied on unmute.
+  this->reg(TAS2780_DVC) = this->is_muted_ ? 0xC9 : dvc;
 
   return true;
 }
